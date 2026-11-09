@@ -9,22 +9,23 @@ The analyses evaluate seasonal habitat coupling by small-bodied fishes, focusing
 ## Repository structure
 
 ```text
-lake_creek_coupling/
+lake_stream_coupling/
 ├── Data/                  # Input data used by the analysis scripts
 ├── Code/                  # R scripts for data processing, models, and figures
 │   ├── 0 - Functions.R
 │   ├── 1 - Figure 2 - Creek Map & Detections.R
-│   ├── 2 - Figure 3 - Seasonal Isotopes & Telemetry Analysis.R
-│   ├── 3 - Figure 4 - GAM Models.R
-│   ├── 4 - Figure 5 -  Biomass Flux.R
-│   └── 5 - Supplement.R
-├── lake_creek_coupling.Rproj
+│   ├── 2 - Figure 3 - Seasonal Isotopes & Telemetry.R
+│   ├── 3 - Figure 4 - Telemetry GAMM Models.R
+│   ├── 4 - Figure 5 -  Biomass Models & Plots.R
+│   ├── 5 - Figure 6 - Fish Size Models & Plots.R
+│   └── 6 - Appendix S1 Plots.R 
+├── lake_stream_coupling.Rproj
 └── README.md
 ```
 
 ## How to run the analyses
 
-Open `lake_creek_coupling.Rproj` in RStudio and run scripts from the project root. Each script sets:
+Open `lake_stream_coupling.Rproj` in RStudio and run scripts from the project root. Each script sets:
 
 ```r
 file_path <- getwd()
@@ -35,7 +36,7 @@ and reads files using paths such as `Data/...` and `Code/...`. Running from the 
 Recommended script order:
 
 1. `Code/0 - Functions.R`
-2. `Code/1 - Figure 2 - Creek Map & Detections.R`
+2. `Code/1 - Figure 2 - Stream Map & Detections.R`
 3. `Code/2 - Figure 3 - Seasonal Isotopes & Telemetry Analysis.R`
 4. `Code/3 - Figure 4 - GAM Models.R`
 5. `Code/4 - Figure 5 -  Biomass Flux.R`
@@ -94,7 +95,7 @@ Key functions include:
 - `standard_error()`: calculates standard error while ignoring missing values.
 - `print_emm_pairs_iso()`: prints estimated marginal means and Tukey-adjusted pairwise comparisons for isotope models across month and location.
 - `print_emm_pairs_tel()`: prints estimated marginal means and Tukey-adjusted pairwise comparisons for telemetry models across season and release location.
-- `calculate_prop_tp()`: calculates the proportion of lake-derived carbon and trophic position for selected fish species and tissue types using creek and lake mayfly isotope baselines.
+- `calculate_prop_tp()`: calculates the proportion of lake-derived carbon and trophic position for selected fish species and tissue types using stream and lake mayfly isotope baselines.
 - `create_time_series()`: creates a one-minute telemetry time series for each tagged fish, joining detections to the deployment period and carrying the last known location forward.
 - `enriched_time_series()`: similar to `create_time_series()`, but used in supplementary telemetry-processing plots.
 
@@ -102,7 +103,7 @@ Relation to manuscript: this file provides the shared calculations underlying th
 
 ---
 
-### `1 - Figure 2 - Creek Map & Detections.R`
+### `1 - Figure 2 - Stream Map & Detections.R`
 
 This script generates the study-system map and receiver-detection visualization used for **Figure 2**.
 
