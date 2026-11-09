@@ -269,7 +269,7 @@ The scripts refer to the following input files:
 
 ```text
 Data/iso_metadata.csv
-Data/dets_clean.csv
+Data/dets_clean.csv <-- must open zip file from repo to access - too large for github in non-compressed form
 Data/receivers.csv
 Data/baselines_coords_d13C.csv
 Data/minnowtrap_data.csv
