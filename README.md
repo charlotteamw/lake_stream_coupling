@@ -15,7 +15,7 @@ lake_stream_coupling/
 ├── Data/                  # Input data used by the analysis scripts
 ├── Code/                  # R scripts for data processing, models, and figures
 │   ├── 0 - Functions.R
-│   ├── 1 - Figure 2 - Creek Map & Detections.R
+│   ├── 1 - Figure 2 - Stream Map & Detections.R
 │   ├── 2 - Figure 3 - Seasonal Isotopes & Telemetry.R
 │   ├── 3 - Figure 4 - Telemetry GAMM Models.R
 │   ├── 4 - Figure 5 -  Biomass Models & Plots.R
