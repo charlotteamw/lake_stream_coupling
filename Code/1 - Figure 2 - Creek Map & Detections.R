@@ -1,7 +1,7 @@
-# Generate Map and 
+# Script for Figure 2 (IsoScape) for manuscript "Habitat coupling by small fish across lake-stream habitats: a missing link in freshwater food webs?"
 
-
-# Version: 2026-03-15
+# Version: 2026-10-25
+# Author(s): Charlotte Ward & Reilly O'Connor
 
 # Load Pkgs
 library(sf)
@@ -25,47 +25,46 @@ source(file.path(file_path, "/Code/0 - Functions.R"))
 waterbodies <- st_read(file.path(file_path, "Data/Lakes_Streams/WaterbodyPolygons.shp"))
 watercourses <- st_read(file.path(file_path, "Data/Lakes_Streams/WatercourseLines.shp"))
 
-# Ensure CRS is consistent (WGS84)
+#Ensure CRS is consistent (WGS84)
 waterbodies <- st_transform(waterbodies, crs = 4326)
 watercourses <- st_transform(watercourses, crs = 4326)
 
-# Load receiver data
+#Load receiver data
 metadata <- read_csv(file.path(file_path, "Data/receivers.csv"))
 
-# Convert receiver locations to sf object
+#Convert receiver locations to sf object
 receiver_sf <- st_as_sf(
   metadata,
   coords = c("deploy_long", "deploy_lat"),
-  crs = 4326
-)
+  crs = 4326)
 
 receiver_sf
 
-# Load detection data
-dets <- read_csv(file.path(file_path, "Data/detections_clean_alldata.csv"))
+#Load detection data
+dets <- read_csv(file.path(file_path, "Data/dets_clean.csv"))
 
-# Remove specified transmitters
+#Remove specified transmitters
 transmitters_to_remove <- c("34905", "32999")
 detections_filtered <- dets %>%
   filter(!transmitter_id %in% transmitters_to_remove) %>%
   filter(!is.na(receiver_sn))
 
-# Compute receiver detection frequency
+#Compute receiver detection frequency
 receiver_freq <- detections_filtered %>%
   group_by(receiver_sn) %>%
   summarise(freq = n())
 
-# Merge detection frequency with receiver locations
+#Merge detection frequency with receiver locations
 receiver_sf <- receiver_sf %>%
   left_join(receiver_freq, by = c("receiver_sn" = "receiver_sn"))
 
-# Replace NA frequencies with 0 for consistency
+#Replace NA frequencies with 0 for consistency
 receiver_sf$freq[is.na(receiver_sf$freq)] <- 0
 
-# Scale receiver sizes by detection frequency
+#Scale receiver sizes by detection frequency
 receiver_sf$size <- scales::rescale(receiver_sf$freq, to = c(2, 7)) # Adjust size range
 
-# Generate network edges
+#Generate network edges
 make_network_data <- function(dat) {
   ids <- unique(dat$transmitter_id)
   
@@ -93,7 +92,7 @@ make_network_data <- function(dat) {
 
 full.network <- make_network_data(dat = detections_filtered)
 
-# Add edges as spatial lines
+#Add edges as spatial lines
 edges <- full.network$moves %>%
   mutate(from = as.character(from), to = as.character(to)) %>%
   rowwise() %>%
@@ -104,22 +103,22 @@ edges <- full.network$moves %>%
     )))) %>%
   st_sf(crs = 4326)
 
-# Load and process the isoscape
-GNIPData <- read.csv(file.path(file_path, "Data/baselines_coords_d13C_2026.csv"))
+#Load and process the isoscape
+GNIPData <- read.csv(file.path(file_path, "Data/base_values_coords.csv"))
 GNIPData$source_ID <- factor(paste("site", GNIPData$lat, GNIPData$long, GNIPData$elev, sep = "_"))
 
 GNIPData_agg <- prepsources(data = GNIPData,
                             long_min = -78.38, long_max = -78.32,
                             lat_min = 45.60, lat_max = 45.65)
 
-# Fit isotopic model
+#Fit isotopic model
 ModelFit <- isofit(data = GNIPData_agg,
                    mean_model_fix = list(elev = FALSE, lat_abs = TRUE))
 
-# Define raster extent
+#Define raster extent
 new_extent <- c(xmin = -78.38, xmax = -78.32, ymin = 45.60, ymax = 45.65)
 
-# Create raster template with correct resolution
+#Create raster template with correct resolution
 raster_template <- rast(
   xmin = new_extent["xmin"],
   xmax = new_extent["xmax"],
@@ -129,61 +128,53 @@ raster_template <- rast(
   crs = "+proj=longlat +datum=WGS84"
 )
 
-# Rasterize and mask to waterbodies
+#Rasterize and mask to waterbodies
 waterbodies_raster <- rasterize(vect(waterbodies), raster_template, field = 1, background = NA)
 clipped_raster <- mask(waterbodies_raster, vect(waterbodies))
 
-# Create structural raster for isoscape modeling
+#Create structural raster for isoscape modeling
 structural_raster <- prepraster(
   raster = clipped_raster,
   isofit = ModelFit,
   aggregation_factor = 1
 )
 
-# Build the isoscape
+#Build the isoscape
 MinnowIsoscape <- isoscape(
   raster = structural_raster,
   isofit = ModelFit
 )
 
-# Mask the isoscape to match **only** the waterbody areas
+#Mask the isoscape to match **only** the waterbody areas
 masked_isoscape <- mask(MinnowIsoscape$isoscapes$mean, vect(waterbodies))
 
-# Convert masked isoscape to a dataframe for ggplot2
+#Convert masked isoscape to a dataframe
 masked_isoscape_df <- as.data.frame(masked_isoscape, xy = TRUE, na.rm = TRUE)
 
-# Crop waterbodies and watercourses to match the raster extent
+#Crop waterbodies and watercourses to match the raster extent
 raster_extent <- st_as_sf(as.polygons(ext(masked_isoscape), crs = st_crs(waterbodies)$wkt))
 cropped_waterbodies <- st_intersection(waterbodies, raster_extent)
 cropped_watercourses <- st_intersection(watercourses, raster_extent)
 
-# Define a new column for receiver size mapping (ensures correct legend)
+#Define a new column for receiver size mapping
 receiver_sf <- receiver_sf %>%
-  mutate(size = scales::rescale(freq, to = c(0.5, 3)))  # Adjust min/max scaling
+  #Adjust min/max scaling...
+  mutate(size = scales::rescale(freq, to = c(0.5, 3)))
 
-# Figure 2: Isoscape + Network + Receiver Detection Frequencies
-ggplot() +
+#Figure 2 - Isoscape, Network, & Receiver Detection Frequencies
+gg_isoscape <- ggplot() +
   geom_raster(data = masked_isoscape_df, aes(x = x, y = y, fill = mean)) +
   scale_fill_gradientn(
     colors = c("#b34332", "#F06C57", "#eb8d7f", "#b6cedb","#5494b8","#2c6c91"),
     name = expression(δ^13*C)
   ) +
   geom_sf(data = cropped_waterbodies, fill = NA, size = 0.2) +
-  geom_sf(
-    data = receiver_sf,
-    aes(size = size),
-    shape = 21,  
-    color = "black",
-    fill = "white",
-    alpha = 0.7,
-    stroke = 1.5
-  ) +
+  geom_sf(data = receiver_sf, aes(size = size), shape = 21,  color = "black",
+    fill = "white", alpha = 0.7, stroke = 1.5) +
   scale_size_continuous(
-    name = "Receiver Detections",
-    range = c(0.5, 4),  
+    name = "Receiver Detections", range = c(0.5, 4),  
     breaks = scales::rescale(c(0, 100, 500, 5000, 10000, 20000), to = c(0.5, 3)),  
-    labels = c("0", "100", "500", "5000", "10000", "20000")  
-  ) +
+    labels = c("0", "100", "500", "5000", "10000", "20000")) +
   annotation_scale(location = "bl", width_hint = 0.3, unit_category = "metric", height = unit(0.3, "cm")) +
   annotation_north_arrow(location = "br", style = north_arrow_minimal, height = unit(0.5, "cm"), width = unit(0.5, "cm")) +
   theme_minimal() +
@@ -195,14 +186,11 @@ ggplot() +
     plot.title = element_text(size = 16, face = "bold", hjust = 0.5), 
     legend.title = element_text(size = 12), 
     legend.text = element_text(size = 10),  
-    aspect.ratio = 9/10  
-  ) +
-  labs(
-    x = "Longitude",
-    y = "Latitude"
-  )
+    aspect.ratio = 9/10) +
+  labs(x = "Longitude", 
+       y = "Latitude")
 
-
+gg_isoscape
 
 
 
