@@ -1,10 +1,12 @@
-# lake_creek_coupling
+# lake_stream_coupling
 
 This repository contains the data-processing, statistical-analysis, and figure-generation code for the manuscript:
 
-**Habitat coupling by small fish across lake–creek habitats: a missing link in freshwater food webs?**
+**Habitat coupling by small fish across lake–stream habitats: a missing link in freshwater food webs?**
 
-The analyses evaluate seasonal habitat coupling by small-bodied fishes, focusing on golden shiner (*Notemigonus crysoleucas*) and common shiner (*Luxilus cornutus*) in a connected lake–creek ecosystem. The scripts combine stable isotope data, acoustic telemetry detections, and seasonal/directional trapping data to quantify trophic, behavioural, and biomass-flux dimensions of habitat coupling.
+The analyses evaluate seasonal habitat coupling by small-bodied fishes, focusing on golden shiner (*Notemigonus crysoleucas*) and common shiner (*Luxilus cornutus*) in a connected lake–stream ecosystem. The scripts combine stable isotope data, acoustic telemetry detections, and seasonal/directional trapping data to quantify trophic, behavioural, and biomass-flux dimensions of habitat coupling.
+
+Note that in scripts, stream is coded as "creek" 
 
 ## Repository structure
 
