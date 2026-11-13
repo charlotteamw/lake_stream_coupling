@@ -44,7 +44,6 @@ Recommended script order:
 5. `Code/4 - Figure 5 -  Biomass Flux.R`
 6. `Code/5 - Supplement.R`
 
-The main analysis scripts source the shared functions file automatically, so reviewers do not need to run `0 - Functions.R` manually first, although it is listed first because the other scripts depend on it.
 
 ## R packages used
 
