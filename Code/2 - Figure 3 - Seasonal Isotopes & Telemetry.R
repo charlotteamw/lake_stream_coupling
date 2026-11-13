@@ -60,36 +60,11 @@ isotope_data <- read.csv(file.path(file_path, "Data/iso_metadata.csv"), header =
 
 shiner_species <- c("golden shiner", "common shiner")
 
-##### Assign areas and filter data #####
-#assign specific sites to sampling areas
-assign_area <- function(sample_id) {
-  sample_prefix <- toupper(str_extract(trimws(sample_id), "^[A-Za-z]+[0-9]*"))
-  # Accept both hyphen and underscore specimen codes, plus the special FU label.
-  sample_prefix <- case_when(
-    str_detect(toupper(sample_id), "^(WU|WD)") |
-      sample_prefix %in% c("DN2", "UP1", "UP3") ~ "CR5",
-    str_detect(toupper(sample_id), "^(FU|FD)|^SMB1[[:space:]]+FU(?:[-_]|$)") ~ "CR1",
-    sample_prefix == "FN" ~ "CR1",
-    TRUE ~ sample_prefix
-  )
-  factor(case_when(
-    is.na(sample_id) ~ NA_character_,
-    sample_prefix %in% c("CR8", "CR10", paste0("CC", 18:24)) ~ "CR_Area3",
-    sample_prefix %in% c("FYKE", "CR1", "CR2", "CR3", "CC", "CC2") ~ "CR_Area1",
-    sample_prefix %in% c("CR5", "EF4", "WEIR", "UP", "UP2", "CR4", "CR6", "CR7",
-                         "CR9", paste0("CC", 5:14), "CC16", "CC25") ~ "CR_Area2",
-    sample_prefix %in% c("LK4", "LK10", "LK5", "LK6", "LK3", "OP3", "OP4", "OP5",
-                         "OP6", "OP10", "OP11", "OP12") ~ "LK_Area1",
-    sample_prefix %in% c("OP1", "OP2", "LK", "LK1", "LK2") ~ "LK_Area2",
-    sample_prefix %in% c("OP9", "OP8", "LK9", "LK8", "OP17", "LK7", "OP7") ~ "LK_Area3",
-    TRUE ~ NA_character_
-  ))
-}
-
-#Fix any notation issues from above...
 isotope_data <- isotope_data %>%
-  mutate(sample_prefix = toupper(sub("-.*$", "", trimws(sample_ID))),
-         area = assign_area(sample_ID))
+  mutate(
+    sample_prefix = toupper(sub("-.*$", "", trimws(sample_ID))),
+    area = assign_area(sample_ID)
+  )
 
 print(isotope_data %>% 
         filter(is.na(area)) %>%
@@ -104,9 +79,9 @@ isotope_data <- isotope_data %>%
 shiners_liver <- calculate_prop_tp(isotope_data, shiner_species, "liver") %>%
   distinct() %>%
   mutate(location = factor(location, levels = c("creek", "lake")),
-    month = factor(month, levels = month_levels, labels = month_labels),
-    habitat_coupling = (0.5 - abs(lake_carbon - 0.5)) / 2,
-    lake_carbon_adj = adjust_beta_response(lake_carbon))
+         month = factor(month, levels = month_levels, labels = month_labels),
+         habitat_coupling = (0.5 - abs(lake_carbon - 0.5)) / 2,
+         lake_carbon_adj = adjust_beta_response(lake_carbon))
 
 shiners_liver %>%
   mutate(sample_prefix = toupper(sub("-.*$", "", trimws(sample_ID)))) %>%
@@ -483,7 +458,7 @@ metadata_records <- dets %>%
     release_site = na_if(
       trimws(as.character(release_site)), ""),
     recorded_release_location =
-tolower(trimws(as.character(release_location))),
+      tolower(trimws(as.character(release_location))),
     tl = ensure_numeric(tl)) %>%
   distinct()
 
@@ -559,7 +534,7 @@ time_series_all <- bind_rows(time_series_list) %>%
   filter(date_time >= min(date_time, na.rm = TRUE)) %>%
   ungroup()
 
-#Assign a season and a calendar year to all of ze observations
+#Assign a season and a calendar year to all of the observations
 time_series_all <- time_series_all %>%
   mutate(
     Season = case_when(
@@ -583,10 +558,10 @@ time_series_all <- time_series_all %>%
     year = lubridate::year(date_time))
 
 time_series_all %>%
-    count(year, Season)
+  count(year, Season)
 
 ##### Telemetry Data Cleaning and Calculating Residency & Recurrence #####
-release_habitat_lookup <- time_series_all %>%
+reference_habitat_lookup <- time_series_all %>%
   group_by(id_time) %>%
   summarise(target_habitat = first(location[!is.na(location)],
                                    default = NA_character_),
@@ -594,7 +569,7 @@ release_habitat_lookup <- time_series_all %>%
 
 #Summarize Residency separately for each year and season...
 residency_seasonal <- time_series_all %>%
-  left_join(release_habitat_lookup,by = "id_time") %>%
+  left_join(reference_habitat_lookup,by = "id_time") %>%
   group_by(id_time, year, Season, target_habitat) %>%
   summarise(total_minutes = sum(!is.na(location)),
             habitat_minutes = sum(location == target_habitat, na.rm = TRUE),
@@ -602,7 +577,7 @@ residency_seasonal <- time_series_all %>%
                                        habitat_minutes / total_minutes,
                                        NA_real_),
             .groups = "drop") %>%
-  rename(release_location = target_habitat)
+  rename(reference_habitat = target_habitat)
 
 #Identify return events across each individual fish's full time series
 #Recurrence events are then assigned to the year and season in which they occur
@@ -681,20 +656,20 @@ for (fish_id in unique(time_series_all$id_time)) {
   recurrence_seasonal_list[[fish_id]] <- fish_data
 }
 
-#Summarize return events by individual fish, year, und season
+#Summarize return events by individual fish, year, and season
 
 recurrence_seasonal <- bind_rows(
   recurrence_seasonal_list) %>% 
-  left_join(release_habitat_lookup, by = "id_time") %>%
+  left_join(reference_habitat_lookup, by = "id_time") %>%
   group_by(id_time, year, Season, target_habitat) %>%
   summarise(total_returns = sum(return_event, na.rm = TRUE),
-    mean_recurrence_interval = mean(recurrence_interval, na.rm = TRUE), .groups = "drop") %>%
-  rename(release_location = target_habitat)
+            mean_recurrence_interval = mean(recurrence_interval, na.rm = TRUE), .groups = "drop") %>%
+  rename(reference_habitat = target_habitat)
 
 
 #Put together final data set for anaylsis
 final_results <- recurrence_seasonal %>%
-  left_join(residency_seasonal,by = c("id_time", "year", "Season", "release_location")) %>%
+  left_join(residency_seasonal,by = c("id_time", "year", "Season", "reference_habitat")) %>%
   left_join(fish_metadata_lookup, by = "id_time") %>%
   distinct(id_time, year, Season,
            .keep_all = TRUE) %>%
@@ -707,27 +682,21 @@ final_results <- recurrence_seasonal %>%
          Season = factor(
            Season,
            levels = season_levels),
-    release_location = factor(release_location, levels = c("creek", "lake")),
-    season_loc = paste(Season, release_location, sep = "_"),
-    habitat_residency_adj =
-      (habitat_residency * (total_minutes - 1) + 0.5) / total_minutes,
-    release_site = trimws(as.character(release_site)),
-    release_site = case_when(
-      tolower(release_site) == "weir" ~ "CR5",
-      tolower(release_site) == "fyke" ~ "CR1",
-      TRUE ~ release_site),
-    release_site = factor(release_site),
-    area = assign_area(as.character(release_site)))
+         reference_habitat = factor(reference_habitat, levels = c("creek", "lake")),
+         season_loc = paste(Season, reference_habitat, sep = "_"),
+         habitat_residency_adj =
+           (habitat_residency * (total_minutes - 1) + 0.5) / total_minutes,
+         release_area = assign_area(release_site))
 
-count(final_results, release_site, area, sort = TRUE)
+count(final_results, release_site, release_area, sort = TRUE)
 
 final_results %>%
-    count(year, Season, release_location)
+  count(year, Season, reference_habitat)
 
-count(final_results, release_site, area, sort = TRUE)
+count(final_results, release_site, release_area, sort = TRUE)
 
 telemetry_summary <- final_results %>%
-  group_by(Season, release_location) %>%
+  group_by(Season, reference_habitat) %>%
   summarise(n = n(),
             mean_habitat_residency = round(mean(habitat_residency, na.rm = TRUE), 3),
             se_habitat_residency = round(standard_error(habitat_residency), 3),
@@ -743,17 +712,17 @@ names(residency_seasonal)
 
 ##### Telemetry Residency & Occurrence Models #####
 glmb_residency <- glmmTMB(
-  habitat_residency_adj ~ Season * release_location + (1 | area) + (1 | transmitter_id),
+  habitat_residency_adj ~ Season * reference_habitat + (1 | release_area) + (1 | transmitter_id),
   data = final_results, family = beta_family(link = "logit"))
 
 Anova(glmb_residency, type = 3)
 
 glmb_residency <- glmmTMB(
-  habitat_residency_adj ~ Season + release_location + (1 | area) + (1 | transmitter_id),
+  habitat_residency_adj ~ Season + reference_habitat + (1 | release_area) + (1 | transmitter_id),
   data = final_results, family = beta_family(link = "logit"))
 
 Anova(glmb_residency, type = 2)
-performance::r2_nakagawa(glmb_residency, tolerance = 1e-12)
+performance::r2_nakagawa(glmb_residency, tolerance = 1e-15)
 
 
 sim_residency <- simulateResiduals(glmb_residency, n = 1000, seed = 123)
@@ -763,19 +732,19 @@ plot(sim_residency)
 final_results <- final_results %>%
   mutate(observation_days = total_minutes / 1440)
 
-print(final_results %>% group_by(Season, release_location) %>%
+print(final_results %>% group_by(Season, reference_habitat) %>%
         summarise(n = n(), min_days = min(observation_days),
                   median_days = median(observation_days),
                   max_days = max(observation_days), .groups = "drop"))
 
-glmb_recurrence <- glmmTMB(total_returns ~ Season * release_location 
-                           + offset(log(observation_days)) + (1 | area) + (1 | transmitter_id),
+glmb_recurrence <- glmmTMB(total_returns ~ Season * reference_habitat 
+                           + offset(log(observation_days)) + (1 | release_area) + (1 | transmitter_id),
                            data = final_results, family = nbinom2(link = "log"))
 
 Anova(glmb_recurrence, type = 3)
 
-glmb_recurrence <- glmmTMB(total_returns ~ Season + release_location 
-                           + offset(log(observation_days)) + (1 | area) + (1 | transmitter_id),
+glmb_recurrence <- glmmTMB(total_returns ~ Season + reference_habitat 
+                           + offset(log(observation_days)) + (1 | release_area) + (1 | transmitter_id),
                            data = final_results, family = nbinom2(link = "log"))
 
 Anova(glmb_recurrence, type = 2)
@@ -791,7 +760,7 @@ residency_season_contrasts <- as.data.frame(summary(pairs(emmeans(glmb_residency
 
 print(residency_season_contrasts)
 
-residency_habitat_contrasts <- as.data.frame(summary(pairs(emmeans(glmb_residency, ~ release_location), adjust = "tukey"), type = "response", infer = c(FALSE, TRUE), adjust = "tukey"))
+residency_habitat_contrasts <- as.data.frame(summary(pairs(emmeans(glmb_residency, ~ reference_habitat), adjust = "tukey"), type = "response", infer = c(FALSE, TRUE), adjust = "tukey"))
 
 print(residency_habitat_contrasts)
 
@@ -802,7 +771,7 @@ recurrence_season_contrasts <- as.data.frame(summary(
 print(recurrence_season_contrasts)
 
 recurrence_habitat_contrasts <- as.data.frame(summary(
-  pairs(emmeans(glmb_recurrence, ~ release_location, offset = 0), adjust = "tukey"),
+  pairs(emmeans(glmb_recurrence, ~ reference_habitat, offset = 0), adjust = "tukey"),
   type = "response", infer = c(FALSE, TRUE), adjust = "tukey"
 ))
 
@@ -819,13 +788,13 @@ emm_tp <- emmeans(glmb_tp_shnr, ~ month + location, type = "response") %>%
   rename(est = emmean) %>%
   mutate(lo = est - SE, hi = est + SE)
 
-emm_residency <- emmeans(glmb_residency, ~ Season + release_location, type = "response") %>%
+emm_residency <- emmeans(glmb_residency, ~ Season + reference_habitat, type = "response") %>%
   as.data.frame() %>%
   rename(est = response) %>%
   mutate(lo = pmax(0, est - SE), hi = pmin(1, est + SE))
 
 emm_recurrence <- emmeans(
-  glmb_recurrence, ~ Season + release_location, type = "response", offset = 0) %>%
+  glmb_recurrence, ~ Season + reference_habitat, type = "response", offset = 0) %>%
   as.data.frame() %>%
   rename(est = response) %>%
   mutate(lo = est - SE, hi = est + SE)
@@ -893,7 +862,7 @@ plot_shiner_tp <- ggplot(
 #3C - Recurrence
 plot_recurrence <- ggplot(
   emm_recurrence,
-  aes(x = Season, y = est, group = release_location)
+  aes(x = Season, y = est, group = reference_habitat)
 ) +
   geom_line(alpha = 0.6) +
   geom_errorbar(
@@ -902,7 +871,7 @@ plot_recurrence <- ggplot(
     # position = position_dodge(width = 0.4)
   ) +
   geom_point(
-    aes(fill = release_location),
+    aes(fill = reference_habitat),
     size = 2.8, shape = 21, color = "#323332", stroke = 0.6,
     # position = position_dodge(width = 0.4)
   ) +
@@ -913,7 +882,7 @@ plot_recurrence <- ggplot(
     labels = c("Creek", "Lake")
   ) +
   scale_y_continuous(breaks = scales::pretty_breaks()) +
-  labs(y = "Habitat recurrence (returns/day)", x = NULL) +
+  labs(y = "Habitat Recurrence (returns/day)", x = NULL) +
   custom_theme +
   guides(fill = guide_legend(
     override.aes = list(shape = 21, size = 3, color = "#323332", stroke = 0.6)
@@ -922,7 +891,7 @@ plot_recurrence <- ggplot(
 #3D - Habitat residency
 plot_residency <- ggplot(
   emm_residency,
-  aes(x = Season, y = est, group = release_location)
+  aes(x = Season, y = est, group = reference_habitat)
 ) +
   geom_line(alpha = 0.6) +
   geom_errorbar(
@@ -931,7 +900,7 @@ plot_residency <- ggplot(
     # position = position_dodge(width = 0.4)
   ) +
   geom_point(
-    aes(fill = release_location),
+    aes(fill = reference_habitat),
     size = 2.8, shape = 21, color = "#323332", stroke = 0.6,
     # position = position_dodge(width = 0.4)
   ) +
@@ -1014,18 +983,18 @@ summary(tp_species)
 final_results <- final_results %>%
   mutate(year = factor(year)) 
 
-glmb_residency_year <- glmmTMB(habitat_residency_adj ~ Season + release_location + year + (1 | area) + (1 | transmitter_id),
+glmb_residency_year <- glmmTMB(habitat_residency_adj ~ Season + reference_habitat + year + (1 | release_area) + (1 | transmitter_id),
                                data = final_results, family = beta_family(link = "logit"))
 
 Anova(glmb_residency_year, type = 2)
-performance::r2_nakagawa(glmb_residency_year, tolerance = 1e-15)
+performance::r2_nakagawa(glmb_residency_year, tolerance = 1e-20)
 
 #Year not significant (p > 0.05)
 summary(glmb_residency_year)
 
 #Recurrence glm
-glmb_recurrence_year <- glmmTMB(total_returns ~ Season + release_location + year + 
-                                  offset(log(observation_days)) + (1 | area) + (1 | transmitter_id),
+glmb_recurrence_year <- glmmTMB(total_returns ~ Season + reference_habitat + year + 
+                                  offset(log(observation_days)) + (1 | release_area) + (1 | transmitter_id),
                                 data = final_results, family = nbinom2(link = "log"))
 
 Anova(glmb_recurrence_year, type = 2)
@@ -1033,4 +1002,5 @@ performance::r2_nakagawa(glmb_recurrence_year, tolerance = 1e-15)
 
 #Year not significant (p > 0.05)
 summary(glmb_residency_year)
+
 

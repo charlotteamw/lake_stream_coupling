@@ -1,0 +1,7 @@
+Model,n,EDF,LogLik,AIC,Delta_AIC,Akaike_weight,Deviance_explained_pct
+"s(day_of_year, bs = ""cc"", k = 20) + s(transmitter_id, bs = ""re"")",1741,39.82,-556.05,1194.8,0,0.313,25.97
+"s(day_of_year, bs = ""cc"", k = 20) + tl + s(transmitter_id, bs = ""re"")",1741,40.08,-556.07,1195.41,0.6,0.232,25.97
+"s(day_of_year, bs = ""cc"", k = 20) + s(tl, bs = ""tp"", k = 20) + s(release_area, bs = ""re"") + s(transmitter_id, bs = ""re"")",1741,40.08,-556.07,1195.44,0.64,0.228,25.97
+"s(day_of_year, bs = ""cc"", k = 20) + s(tl, bs = ""tp"", k = 20) + s(transmitter_id, bs = ""re"")",1741,40.08,-556.07,1195.44,0.64,0.228,25.97
+"s(day_of_year, bs = ""cc"", k = 20) + s(tl, bs = ""tp"", k = 20) + s(release_area, bs = ""re"")",1741,21.29,-614.75,1278.11,83.31,2.55e-19,18.15
+"s(day_of_year, bs = ""cc"", k = 20) + s(tl, bs = ""tp"", k = 20)",1741,20.11,-617.05,1278.17,83.37,2.47e-19,17.85

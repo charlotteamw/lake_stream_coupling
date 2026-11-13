@@ -27,7 +27,7 @@ recs_to_remove <- c("R018", "R017", "R016")
 
 dets_1 <- dets %>%
   filter(!transmitter_id %in% transmitters_to_remove) %>%
-  filter(!rec_ID %in% recs_to_remove) 
+  filter(!rec_ID %in% recs_to_remove)
 
 dets_2 <- dets_1 %>%
   mutate(step_time = case_when(
@@ -68,42 +68,17 @@ if (nrow(invalid_id_times) > 0) {
   
   invalid_id_times %>%
     select(id_time, tag_on, tag_off,
-      first_det, last_det, step_dur) %>%
+           first_det, last_det, step_dur) %>%
     print(n = Inf)
 }
 
 detections_filtered <- detections_filtered %>%
   filter(id_time %in% (window_check %>% 
                          filter(!id_time %in% invalid_id_times$id_time) %>%
-                         pull(id_time)))
+                         pull(id_time)))%>%
+  mutate(release_area = assign_area(release_site))
 
-#Double check release area and assign sampling areas using the existing release_site column to create release_area.
-detections_filtered <- detections_filtered %>%
-  mutate(release_area = {
-    site <- toupper(trimws(as.character(release_site)))
-    site_code <- str_extract(site, "^[A-Z]+[0-9]*")
-    
-      factor(case_when(
-        is.na(site) | site == "" ~ NA_character_,
-        
-        site_code %in% c("CR8", "CR10", paste0("CC", 18:24)) ~ "CR_Area3",
-        
-        str_detect(site, "^(FU|FD)") |
-          site_code %in% c("FN", "FYKE", "CR1", "CR2", "CR3", "CC", "CC2") ~ "CR_Area1",
-        
-        str_detect(site, "^(WU|WD)") |
-          site_code %in% c("DN2", "UP1", "UP3", "CR5", "EF4", "WEIR", "UP", "UP2", "CR4", "CR6", "CR7", "CR9", 
-                           paste0("CC", 5:14), "CC16", "CC25") ~ "CR_Area2",
-        
-        site_code %in% c("LK4", "LK10", "LK5", "LK6", "LK3", "OP3", "OP4", "OP5", "OP6", "OP10", "OP11", "OP12") ~ "LK_Area1",
-        
-        site_code %in% c("OP1", "OP2", "LK", "LK1", "LK2") ~ "LK_Area2",
-        
-        site_code %in% c("OP9", "OP8", "LK9", "LK8", "OP17", "LK7", "OP7") ~ "LK_Area3",
-        
-        TRUE ~ NA_character_))
-    }
-    )
+
 
 #Double check the site-to-area assignments...
 detections_filtered %>%
@@ -115,7 +90,7 @@ detections_filtered %>%
 daily_movements <- detections_filtered %>%
   group_by(transmitter_id, detection_date, release_location, release_area, tl) %>%
   summarise(unique_locations = n_distinct(location, na.rm = TRUE),
-    .groups = "drop") %>%
+            .groups = "drop") %>%
   mutate(multiple_locations = ifelse(unique_locations > 1, 1, 0),
          date = as.Date(detection_date),
          day_of_year = yday(date))
@@ -144,12 +119,10 @@ required_variables <- c("multiple_locations", "day_of_year","tl",
 daily_movements_final <- daily_movements_active %>%
   filter(if_all(all_of(required_variables), ~ !is.na(.x))) %>%
   mutate(transmitter_id = factor(transmitter_id),
-         release_location = factor(release_location),
          release_area = factor(release_area),
          time_day = as.integer(date - min(date))) %>%
   arrange(release_area, transmitter_id, date) %>%
-  droplevels() %>%
-  mutate(year = factor(lubridate::year(date)))
+  droplevels()
 
 str(daily_movements_final$detection_date)
 
@@ -158,8 +131,7 @@ cat("Fish:", nlevels(daily_movements_final$transmitter_id), "\n")
 cat("Release areas:", nlevels(daily_movements_final$release_area), "\n")
 
 
-##### Fit GAMs (using bam() for testing results sensitivity to AR1 addition) and Model Selection #####
-## all models have fixed effects of smooth (day of year); smooth (tl), reference habitat, and year 
+##### Fit GAMMs (using bam() for testing results sensitivity to AR1 addition) and Model Selection #####
 bam_data <- daily_movements_final %>%
   ungroup() %>%
   arrange(transmitter_id, date) %>%
@@ -170,9 +142,7 @@ bam_data <- daily_movements_final %>%
 m_bam_mod_no_re <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
-  + s(tl, bs = 'tp', k = 5) 
-  + release_location 
-  + year
+  + s(tl, bs = 'tp', k = 20) 
   # + s(release_area, bs = "re")
   # + s(transmitter_id, bs = "re")
   ,
@@ -183,13 +153,10 @@ m_bam_mod_no_re <- mgcv::bam(
   discrete = F,
   na.action = na.fail)
 
-## release area random effect added
-m_bam_mod_release_area_re <- mgcv::bam(
+m_bam_mod_rel_area <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
-  + s(tl, bs = 'tp', k = 5) 
-  + release_location 
-  + year 
+  + s(tl, bs = 'tp', k = 20) 
   + s(release_area, bs = "re")
   # + s(transmitter_id, bs = "re")
   ,
@@ -200,13 +167,10 @@ m_bam_mod_release_area_re <- mgcv::bam(
   discrete = F,
   na.action = na.fail)
 
-## transmitter id random effect added
-m_bam_mod_transmitter_id_re <- mgcv::bam(
+m_bam_mod_trans_id <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
-  + s(tl, bs = 'tp', k = 5) 
-  + release_location 
-  + year 
+  + s(tl, bs = 'tp', k = 20) 
   # + s(release_area, bs = "re")
   + s(transmitter_id, bs = "re")
   ,
@@ -217,13 +181,10 @@ m_bam_mod_transmitter_id_re <- mgcv::bam(
   discrete = F,
   na.action = na.fail)
 
-## release area & transmitter id random effect added
-m_bam_mod_release_area_transmitter_id_re <- mgcv::bam(
+m_bam_mod_trans_id_rel_area <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
-  + s(tl, bs = 'tp', k = 5) 
-  + release_location 
-  + year 
+  + s(tl, bs = 'tp', k = 20) 
   + s(release_area, bs = "re")
   + s(transmitter_id, bs = "re")
   ,
@@ -235,36 +196,35 @@ m_bam_mod_release_area_transmitter_id_re <- mgcv::bam(
   na.action = na.fail)
 
 gam.check(m_bam_mod_no_re)
-gam.check(m_bam_mod_release_area_re)
-gam.check(m_bam_mod_transmitter_id_re)
-gam.check(m_bam_mod_release_area_transmitter_id_re)
+gam.check(m_bam_mod_rel_area)
+gam.check(m_bam_mod_trans_id)
+gam.check(m_bam_mod_trans_id_rel_area)
 
 appraise(m_bam_mod_no_re)
-appraise(m_bam_mod_release_area_re)
-appraise(m_bam_mod_transmitter_id_re)
-appraise(m_bam_mod_release_area_transmitter_id_re)
+appraise(m_bam_mod_rel_area)
+appraise(m_bam_mod_trans_id)
+appraise(m_bam_mod_trans_id_rel_area)
 
 draw(m_bam_mod_no_re, residuals = T)
-draw(m_bam_mod_release_area_re, residuals = T)
-draw(m_bam_mod_transmitter_id_re, residuals = T)
-draw(m_bam_mod_release_area_transmitter_id_re, residuals = T)
+draw(m_bam_mod_rel_area, residuals = T)
+draw(m_bam_mod_trans_id, residuals = T)
+draw(m_bam_mod_trans_id_rel_area, residuals = T)
 
 summary(m_bam_mod_no_re)
-summary(m_bam_mod_release_area_re)
-summary(m_bam_mod_transmitter_id_re)
-summary(m_bam_mod_release_area_transmitter_id_re)
+summary(m_bam_mod_rel_area)
+summary(m_bam_mod_trans_id)
+summary(m_bam_mod_trans_id_rel_area)
 
-bbmle::AICtab(m_bam_mod_no_re, m_bam_mod_release_area_re, m_bam_mod_transmitter_id_re, m_bam_mod_release_area_transmitter_id_re)
+bbmle::AICtab(m_bam_mod_no_re, m_bam_mod_rel_area, m_bam_mod_trans_id, m_bam_mod_trans_id_rel_area)
 
-## Fitting random effect model and testing fixed effects
+### Retain only transmitter ID random effect; release area is not improving model fit and explains little variation in the data
 
-## removing smooth for total length (linear term now)
-m_bam_mod_transmitter_id_re_tl <- mgcv::bam(
+# full model, with linear term for total length (tl) instead of smooth term
+m_bam_mod_trans_id_tl <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
   + tl
-  + release_location 
-  + year 
+  # + s(release_area, bs = "re")
   + s(transmitter_id, bs = "re")
   ,
   family = binomial(link = "logit"),
@@ -274,12 +234,12 @@ m_bam_mod_transmitter_id_re_tl <- mgcv::bam(
   discrete = FALSE,
   na.action = na.fail)
 
-## removing total length altogether
-m_bam_mod_transmitter_id_re_no_tl <- mgcv::bam(
+# no total length 
+m_bam_mod_trans_id_no_tl <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
-  + release_location 
-  + year 
+  # + tl
+  # + s(release_area, bs = "re")
   + s(transmitter_id, bs = "re")
   ,
   family = binomial(link = "logit"),
@@ -289,53 +249,53 @@ m_bam_mod_transmitter_id_re_no_tl <- mgcv::bam(
   discrete = FALSE,
   na.action = na.fail)
 
-summary(m_bam_mod_transmitter_id_re)
-summary(m_bam_mod_transmitter_id_re_tl)
-summary(m_bam_mod_transmitter_id_re_no_tl)
+summary(m_bam_mod_trans_id)
+summary(m_bam_mod_trans_id_tl)
+summary(m_bam_mod_trans_id_no_tl)
 
-bbmle::AICtab(m_bam_mod_transmitter_id_re, m_bam_mod_transmitter_id_re_tl, m_bam_mod_transmitter_id_re_no_tl)
+bbmle::AICtab(m_bam_mod_trans_id, m_bam_mod_trans_id_tl, m_bam_mod_trans_id_no_tl)
 
-## removing reference habitat
-m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat <- mgcv::bam(
-  multiple_locations ~
-    s(day_of_year, bs = "cc", k = 20) 
-  + year 
-  + s(transmitter_id, bs = "re")
-  ,
-  family = binomial(link = "logit"),
-  data = bam_data,
-  knots = list(day_of_year = c(0.5, 366.5)),
-  method = "ML",
-  discrete = FALSE,
-  na.action = na.fail)
+candidate_models <- list(
+  m_bam_mod_no_re,
+  m_bam_mod_rel_area,
+  m_bam_mod_trans_id,
+  m_bam_mod_trans_id_rel_area,
+  m_bam_mod_trans_id_tl,
+  m_bam_mod_trans_id_no_tl)
 
-summary(m_bam_mod_transmitter_id_re_no_tl)
-summary(m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat)
+aic <- vapply(candidate_models, AIC, numeric(1))
+delta_aic <- aic - min(aic)
+relative_likelihood <- exp(-delta_aic / 2)
 
-draw(m_bam_mod_transmitter_id_re_no_tl, residuals = T)
-draw(m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat, residuals = T)
+model_comparison <- data.frame(
+  Model = vapply(
+    candidate_models, function(m) deparse1(formula(m)[[3]]), character(1)
+  ),
+  n = vapply(candidate_models, nobs, numeric(1)),
+  EDF = round(vapply(candidate_models, function(m) sum(m$edf), numeric(1)), 2),
+  LogLik = round(vapply(
+    candidate_models, function(m) as.numeric(logLik(m)), numeric(1)
+  ), 2),
+  AIC = round(aic, 2),
+  Delta_AIC = round(delta_aic, 2),
+  Akaike_weight = signif(relative_likelihood / sum(relative_likelihood), 3),
+  Deviance_explained_pct = round(vapply(
+    candidate_models, function(m) 100 * summary(m)$dev.expl, numeric(1)
+  ), 2)
+)
 
-bbmle::AICtab(m_bam_mod_transmitter_id_re_no_tl, m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat)
+model_comparison <- model_comparison[order(aic), ]
+print(model_comparison, row.names = FALSE)
 
-m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat_no_yr <- mgcv::bam(
-  multiple_locations ~
-    s(day_of_year, bs = "cc", k = 20) 
-  + s(transmitter_id, bs = "re")
-  ,
-  family = binomial(link = "logit"),
-  data = bam_data,
-  knots = list(day_of_year = c(0.5, 366.5)),
-  method = "ML",
-  discrete = FALSE,
-  na.action = na.fail)
-
-bbmle::AICtab(m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat, m_bam_mod_transmitter_id_re_no_tl_no_reference_habitat_no_yr)
+write.csv(model_comparison, "Figures/raw_r_output_figs/GAMM_model_comparison.csv", row.names = FALSE)
 
 ##### Test Influence of Autocorrelation #####
 #refit with freml and discrete = T...
-m_bam_mod_transmitter_id_re_no_ar1 <- mgcv::bam(
+m_bam_mod_trans_id_no_tl <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
+  # + s(tl, bs = 'tp', k = 20) 
+  # + s(release_area, bs = "re")
   + s(transmitter_id, bs = "re")
   ,
   family = binomial(link = "logit"),
@@ -347,15 +307,6 @@ m_bam_mod_transmitter_id_re_no_ar1 <- mgcv::bam(
 
 new_data <- tibble(
   day_of_year = 1:366,
-  tl = median(bam_data$tl, na.rm = TRUE),
-  release_location = factor(
-    levels(bam_data$release_location)[1],
-    levels = levels(bam_data$release_location)
-  ),
-  year = factor(
-    levels(bam_data$year)[1],
-    levels = levels(bam_data$year)
-  ),
   transmitter_id = factor(
     levels(bam_data$transmitter_id)[1],
     levels = levels(bam_data$transmitter_id)
@@ -364,7 +315,7 @@ new_data <- tibble(
 
 
 pred <- predict(
-  m_bam_mod_transmitter_id_re,
+  m_bam_mod_trans_id_no_tl,
   newdata = new_data,
   type = "link",
   se.fit = TRUE,
@@ -410,14 +361,14 @@ gg_gam <- ggplot(new_data, aes(doy_rotated, predicted_prob)) +
 gg_gam
 
 #Use PACF to generate estimate for rho...
-pacf(resid(m_bam_mod_transmitter_id_re)) 
+pacf(resid(m_bam_mod_trans_id_no_tl)) 
 
-#it is around 0.25, but should fit a few to see how much it could change inference...
-
-#Add AR1 process to the model - rho = 0.25 to start
-m_bam_mod_transmitter_id_re_ar1 <- mgcv::bam(
+#it is around 0.25, so account for auto-correlation with rho = 0.25
+m_bam_mod_trans_id_no_tl_ar1 <- mgcv::bam(
   multiple_locations ~
     s(day_of_year, bs = "cc", k = 20) 
+  # + s(tl, bs = 'tp', k = 5) 
+  # + s(release_area, bs = "re")
   + s(transmitter_id, bs = "re")
   ,
   family = binomial(link = "logit"),
@@ -430,8 +381,9 @@ m_bam_mod_transmitter_id_re_ar1 <- mgcv::bam(
   na.action = na.fail)
 
 #See how model predictions change...
+
 pred <- predict(
-  m_bam_mod_transmitter_id_re_ar1,
+  m_bam_mod_trans_id_no_tl_ar1,
   newdata = new_data,
   type = "link",
   se.fit = TRUE,
@@ -477,36 +429,11 @@ gg_gam_ar1 <- ggplot(new_data, aes(doy_rotated, predicted_prob)) +
 gg_gam
 gg_gam_ar1
 
-
-## Final model output
-final_gamm <- m_bam_mod_transmitter_id_re_ar1
-
-# Full model summary
-summary(final_gamm)
-
-# Parametric coefficients
-summary(final_gamm)$p.table
-
-# Smooth term statistics
-summary(final_gamm)$s.table
-
-# Random-effect variance and standard deviation
-mgcv::gam.vcomp(final_gamm)
-
-# AR1 parameter
-final_gamm$rho
+summary(m_bam_mod_trans_id_no_tl_ar1)
 
 
-ggsave(
-  file.path(file_path, "Figures/raw_r_output_figs/figure_4.jpg"),
-  plot = gg_gam_ar1,
-  device = "jpeg",
-  width = 8.5,
-  height = 4.5,
-  dpi = 600,
-  bg = "white"
-)
-
+ggsave(file.path(file_path, "Figures/raw_r_output_figs/figure_4.png"), gg_gam_ar1,
+       width = 8.5, height = 4.5, dpi = 600, bg = "transparent")
 
 
 

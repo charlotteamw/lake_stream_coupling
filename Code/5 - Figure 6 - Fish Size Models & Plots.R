@@ -10,6 +10,8 @@ library(car)
 library(DHARMa)
 library(emmeans)
 library(ggpubr)
+library(performance)
+
 
 file_path <- getwd()
 
@@ -81,7 +83,7 @@ plot_size_shiner <- ggplot(
                     breaks = c("creek", "lake"), labels = c("Creek", "Lake")) +
   geom_vline(xintercept = c(1.5, 2.5), linetype = "dashed",
              color = "grey50", linewidth = 0.5) +
-  labs(x = NULL, y = "Log Shiner Total Length (mm)") +
+  labs(x = NULL, y = "Shiner Total Length (mm)") +
   coord_cartesian(clip = "off") + 
   base_theme
 

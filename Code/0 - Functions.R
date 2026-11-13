@@ -5,6 +5,35 @@
 #Calculate Standard Error
 standard_error <- function(x) sd(x, na.rm = TRUE) / sqrt(sum(!is.na(x)))
 
+#Assign sampling areas
+assign_area <- function(sample_id) {
+  sample_id <- toupper(trimws(as.character(sample_id)))
+  prefix <- stringr::str_extract(sample_id, "^[A-Z]+[0-9]*")
+  
+  fyke_site <- stringr::str_detect(
+    sample_id, "^F|^SMB1[[:space:]]+FU(?:[-_]|$)"
+  )
+  weir_site <- stringr::str_detect(
+    prefix, "^(WEIR|UP|DOWN|DN|WU|WD)[0-9]*$"
+  )
+  
+  factor(dplyr::case_when(
+    fyke_site | prefix %in% c("CR1", "CR2", "CR3", "CC", "CC1", "CC2", "CR4") ~ "CR_Area1",
+    weir_site | prefix %in% c("CR5", "CR6", paste0("CC", c(5, 7:14, 16:18))
+    ) ~ "CR_Area2",
+    prefix %in% c(
+      "CR7", "CR8", "CR9", "CR10", "EF4", paste0("CC", 19:25)
+    ) ~ "CR_Area3",
+    prefix %in% c("OP1", "OP2", "LK", "LK1", "LK2", "EF1", "EF2") ~ "LK_Area1",
+    prefix %in% c("LK4", "LK5", "LK3", "OP3", "OP4", "OP5", "EF5") ~ "LK_Area2",
+    prefix %in% c(
+      "OP8", "LK8", "LK7", "OP7", "LK6", "OP6", "OP12", "OP11", "OP17", "OP16"
+    ) ~ "LK_Area3",
+    prefix %in% c("LK9", "LK10", "EF3", "OP9", "OP10") ~ "LK_Area4",
+    TRUE ~ NA_character_
+  ))
+}
+
 #Function to make sure proportional data using beta-family responses are not exactly 0s or 1s
 adjust_beta_response <- function(x) {
   n_obs <- sum(!is.na(x))
