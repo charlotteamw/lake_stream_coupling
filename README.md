@@ -152,10 +152,9 @@ Main telemetry steps:
 5. Removes fish/tag records with invalid or mismatched detection windows.
 6. Builds one-minute location time series for each tagged fish.
 7. Assigns observations to seasons.
-8. Calculates seasonal habitat residency as the proportion of detected minutes spent in the fish’s release/target habitat.
-9. Calculates seasonal habitat recurrence as the number of return events to the target habitat after an excursion.
-10. Links telemetry records to fish total length.
-11. Fits telemetry models for:
+8. Calculates seasonal habitat residency as the proportion of detected minutes spent in the fish’s reference habitat (where it was first detected).
+9. Calculates seasonal habitat recurrence as the number of return events to the reference habitat after an excursion to the alternative habitat.
+10. Fits telemetry models for:
    - habitat residency, using a beta-family model; and
    - habitat recurrence, using a negative-binomial model.
 
