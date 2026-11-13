@@ -223,14 +223,14 @@ Figure output:
 
 The script saves `Figures/figure_5.jpg`, combining:
 
-- seasonal biomass per trap by lake versus creek location, and
+- seasonal biomass per trap by lake versus stream capture habitat, and
 - directional biomass flux
 
 ---
 
 ### `5 - Figure 6 -  Fish Size Models & PLots.R`
 
-This script compares fish total length (mm) between creek and lake habitats across spring, summer, and fall and generates Figure 6.
+This script compares fish total length (mm) between stream and lake habitats across spring, summer, and fall and generates Figure 6.
 
 Data preparation
 
