@@ -1,6 +1,6 @@
 # lake_stream_coupling
 
-This repository contains the data-processing, statistical-analysis, and figure-generation code for the manuscript:
+This repository contains the data processing, statistical analysis, and figuregeneration code for the manuscript:
 
 **Habitat coupling by small fish across lake–stream habitats: a missing link in freshwater food webs?**
 
