@@ -191,16 +191,16 @@ Main steps:
 8. Calculates a binary response indicating whether a fish was detected in the creek.
 9. Fits candidate GAM/GAMM models using cyclic smooths over day-of-year.
 10. Compares models with and without random effects and AR(1) autocorrelation structure.
-11. Selects the final model based on model fit and biological interpretability.
-12. Generates predicted seasonal probabilities of creek detection with confidence intervals.
-13. Identifies peak and trough periods in predicted creek-use probability.
+11. Selects the final model based on model fit. 
+12. Generates predicted seasonal probabilities of stream detection with confidence intervals.
+13. Identifies peak and trough periods in predicted stream-use probability.
 14. Runs residual diagnostics, including checks for autocorrelation.
 
 Figure output:
 
-The script saves `Figures/figure_4.jpg`, showing the predicted probability of lake–creek detection/use through the annual cycle.
+The script saves `Figures/figure_4.jpg`, showing the predicted probability of lake–stream detection/use through the annual cycle.
 
-Relation to manuscript: this script supports the seasonal behavioural-coupling analysis by showing how creek-detection probability changes continuously through time rather than only by discrete season.
+Relation to manuscript: this script supports the seasonal behavioural-coupling analysis by showing how stream-detection probability changes continuously through time rather than only by discrete season.
 
 ---
 
@@ -213,9 +213,9 @@ Main CPUE steps:
 1. Loads minnow trap data from `Data/minnowtrap_data.csv`.
 2. Filters to golden shiner and common shiner.
 3. Aggregates catch and biomass by month, day, and location.
-4. Calculates log biomass per trap as a CPUE-style response.
+4. Calculates log biomass per trap as a CPUE response.
 5. Fits a `glmmTMB` model testing month, location, and their interaction.
-6. Uses Type III tests, estimated marginal means, and pairwise contrasts to assess seasonal and habitat differences.
+6. Uses Type II or III tests, estimated marginal means, and pairwise contrasts to assess seasonal and habitat differences.
 7. Uses DHARMa residual diagnostics for model checking.
 
 Main directional-flux steps:
@@ -224,82 +224,38 @@ Main directional-flux steps:
 2. Filters to golden shiner and common shiner.
 3. Aggregates daily biomass by year, season, day, and movement direction.
 4. Calculates log biomass flux.
-5. Fits a model testing season, direction, and their interaction, while including year.
-6. Uses Type III tests, estimated marginal means, and pairwise contrasts to assess seasonal and directional differences.
+5. Fits model testing season, direction, and their interaction, while including year.
+6. Uses Type II or III tests, estimated marginal means, and pairwise contrasts to assess seasonal and directional differences.
 
 Figure output:
 
 The script saves `Figures/figure_5.jpg`, combining:
 
 - seasonal biomass per trap by lake versus creek location, and
-- directional biomass flux by upstream versus downstream movement.
-
-Relation to manuscript: this script supports the population-level/biomass-flux dimension of habitat coupling, complementing the isotope and telemetry evidence.
+- directional biomass flux
 
 ---
 
-### `5 - Supplement.R`
+### `5 - Figure 6 -  Fish Size Models & PLots.R`
 
-This script generates supplementary telemetry-processing plots, especially abacus plots used to inspect acoustic detection histories.
+This script compares fish total length (mm) between creek and lake habitats across spring, summer, and fall and generates Figure 6.
+
+Data preparation
+
+1. Loads merged fish catch records from `Data/fish_catches_all_merged.csv`.
+2. Retains individually recorded common shiner, golden shiner, and smallmouth bass with valid total lengths from 2022 to 2024. 
 
 Main steps:
 
-1. Loads cleaned telemetry detections from `Data/detections_clean_alldata.csv`.
-2. Calculates tag timing and valid deployment windows.
-3. Applies the `glatos` false-detection filter.
-4. Removes fish/tag records with invalid or mismatched tag-on/tag-off windows.
-5. Builds enriched one-minute time series for each fish.
-6. Assigns seasons to each time step.
-7. Generates an all-tag raw detection abacus plot.
-8. Generates per-transmitter raw receiver-level abacus plots.
-9. Generates all-tag enriched time-series abacus plots.
-10. Generates per-tag enriched time-series abacus plots.
+1. Filters to individually recorded common shiner and golden shiner and smallmouth bass total lengths.
+2. Fits model testing season, habitat, and their interaction, with sampling area as a random intercept.
+3. Uses Type II or III test, estimated marginal means, and pairwise contrasts to assess seasonal and habitat differences.
+4. Uses DHARMa residual diagnostics for model checking.
 
-Figure outputs:
 
-This script writes supplementary telemetry diagnostic plots to:
+Figure output
 
-```text
-Figures/Telemetry Data Processing/receiver_abacus_plots/
-Figures/Telemetry Data Processing/enriched_abacus_plots/
-```
-
-Relation to manuscript: these plots document telemetry data processing and help reviewers evaluate detection histories, receiver use, location transitions, and the enriched time series used in the behavioural analyses.
-
-## Main data files referenced by scripts
-
-The scripts refer to the following input files:
-
-```text
-Data/iso_metadata.csv
-Data/dets_clean.csv <-- must open zip file from repo to access - too large for github in non-compressed form
-Data/receivers.csv
-Data/baselines_coords_d13C.csv
-Data/minnowtrap_data.csv
-Data/directional_traps_all.csv
-Data/Lakes_Streams/WaterbodyPolygons.shp
-Data/Lakes_Streams/WatercourseLines.shp
-```
-
-## Main figure outputs
-
-```text
-Figures/figure_3.jpg
-Figures/figure_4.jpg
-Figures/figure_5.jpg
-Figures/Telemetry Data Processing/receiver_abacus_plots/
-Figures/Telemetry Data Processing/enriched_abacus_plots/
-```
-
-Figure 2 is generated by `1 - Figure 2 - Creek Map & Detections.R`; reviewers can save it manually unless a `ggsave()` call is added to that script.
-
-## Notes for reviewers
-
-- The scripts are organized to follow the manuscript’s analytical structure: study-system mapping, isotope and telemetry analyses, continuous seasonal movement modelling, biomass flux, and supplementary telemetry diagnostics.
-- The main ecological question is whether small-bodied fishes act as habitat couplers between lake and creek habitats through resource assimilation, movement behaviour, and seasonal biomass flux.
-- Seasonal factors are generally ordered as Spring, Summer, and Fall.
-- Habitat/location factors are generally ordered as creek and lake.
-- Some scripts intentionally remove specified transmitter IDs and/or receivers before analysis. These exclusions are coded explicitly in the relevant scripts.
-- Model outputs, estimated marginal means, pairwise contrasts, and diagnostics are printed to the R console as the scripts run.
-
+The script saves `Figures/figure_6.jpg`, combining:
+- estimated mean total length (mm) by season and habitat for pooled shiners, and
+- estimated mean total length (mm) by season and habitat for smallmouth bass.
 
