@@ -118,10 +118,9 @@ Main steps:
 5. Calculates detection frequency by receiver.
 6. Builds a movement network based on sequential changes in receiver detections for each fish.
 7. Loads isotope baseline-coordinate data from `Data/baselines_coords_d13C.csv`.
-8. Uses `IsoriX` to model and map spatial variation in baseline δ13C across the lake–creek study area.
+8. Uses `IsoriX` to model and map spatial variation in baseline δ13C across the lake–stream study area.
 9. Overlays receiver locations, scaled by detection frequency, on the waterbody/isoscape map.
 
-Relation to manuscript: this script supports the spatial framing of the study system by showing the lake–creek habitat arrangement, receiver array, detection intensity, and spatial isotope baseline structure.
 
 Output: the script currently builds the Figure 2 map in the plotting window. If reviewers need a saved file, add a `ggsave()` call at the end, or run the script interactively and export the plot from RStudio.
 
@@ -171,8 +170,6 @@ The script combines four panels into `Figures/figure_3.jpg`:
 - habitat recurrence, and
 - habitat residency.
 
-Relation to manuscript: this script supports the central comparison of trophic and behavioural habitat coupling across seasons and release habitats.
-
 ---
 
 ### `3 - Figure 4 - GAM Models.R`
@@ -183,18 +180,17 @@ Main steps:
 
 1. Loads cleaned telemetry detections from `Data/detections_clean_alldata.csv`.
 2. Removes specified transmitters and receivers.
-3. Reclassifies transition detections as creek detections for the lake-versus-creek probability analysis.
-4. Converts detection timestamps, release dates, and tag windows to date-time objects.
-5. Applies the `glatos` false-detection filter.
-6. Removes invalid tag windows.
-7. Builds one-minute location time series for each tagged fish.
-8. Calculates a binary response indicating whether a fish was detected in the creek.
-9. Fits candidate GAM/GAMM models using cyclic smooths over day-of-year.
-10. Compares models with and without random effects and AR(1) autocorrelation structure.
-11. Selects the final model based on model fit. 
-12. Generates predicted seasonal probabilities of stream detection with confidence intervals.
-13. Identifies peak and trough periods in predicted stream-use probability.
-14. Runs residual diagnostics, including checks for autocorrelation.
+3. Converts detection timestamps, release dates, and tag windows to date-time objects.
+4. Applies the `glatos` false-detection filter.
+5. Removes invalid tag windows.
+6. Builds one-minute location time series for each tagged fish.
+7. Calculates a binary response indicating whether a fish was detected in the stream and lake in the same day.
+8. Fits candidate GAM/GAMM models using cyclic smooths over day-of-year.
+9. Compares models with and without random effects and AR(1) autocorrelation structure.
+10. Selects the final model based on model fit. 
+11. Generates predicted seasonal probabilities of stream detection with confidence intervals.
+12. Identifies peak and trough periods in predicted lake-stream use probability.
+13. Runs residual diagnostics, including checks for autocorrelation.
 
 Figure output:
 
