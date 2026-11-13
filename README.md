@@ -100,7 +100,7 @@ Key functions include:
 - `create_time_series()`: creates a one-minute telemetry time series for each tagged fish, joining detections to the deployment period and carrying the last known location forward.
 - `enriched_time_series()`: similar to `create_time_series()`, but used in supplementary telemetry-processing plots.
 
-Relation to manuscript: this file provides the shared calculations underlying the isotope mixing estimates, trophic position estimates, telemetry residency estimates, and recurrence analyses used in the main figures and supplementary materials.
+
 
 ---
 
@@ -121,7 +121,6 @@ Main steps:
 9. Overlays receiver locations, scaled by detection frequency, on the waterbody/isoscape map.
 
 
-Output: the script currently builds the Figure 2 map in the plotting window. If reviewers need a saved file, add a `ggsave()` call at the end, or run the script interactively and export the plot from RStudio.
 
 ---
 
@@ -195,7 +194,6 @@ Figure output:
 
 The script saves `Figures/figure_4.jpg`, showing the predicted probability of lake–stream detection/use through the annual cycle.
 
-Relation to manuscript: this script supports the seasonal behavioural-coupling analysis by showing how stream-detection probability changes continuously through time rather than only by discrete season.
 
 ---
 
